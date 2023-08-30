@@ -9,6 +9,39 @@ import os
 import mouse
 import numpy as np
 
+mask_x_coord = 200
+mask_y_coord = 100
+
+class mouseCoord:
+    def __init__(self, x,y):
+        self.x = x
+        self.y = y
+    # getter method
+    def get_x(self):
+        return self.x  
+    # setter method
+    def set_x(self, value_x):
+        self.x = value_x
+    # getter method
+    def get_y(self):
+        return self.y
+    # setter method
+    def set_y(self, value_y):
+        self.y = value_y
+
+mousePos = mouseCoord(100,10)
+# Define the click_event function for mouse clicks
+def click_event(event, x, y, flags, params):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        # print("Mouse clicked at coordinates (x={}, y={})".format(x, y))
+        mousePos.set_x(x)
+        mousePos.set_y(y)
+
+# Initialize OpenCV window for mouse clicks
+cv2.namedWindow("Annotated Image")
+cv2.setMouseCallback("Annotated Image", click_event)
+  
+  
 def draw_landmarks_on_image(rgb_image, detection_result):
   face_landmarks_list = detection_result.face_landmarks
   annotated_image = np.copy(rgb_image)
@@ -16,7 +49,6 @@ def draw_landmarks_on_image(rgb_image, detection_result):
   # Loop through the detected faces to visualize.
   for idx in range(len(face_landmarks_list)):
     face_landmarks = face_landmarks_list[idx]
-
     # Draw the face landmarks.
     face_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
     face_landmarks_proto.landmark.extend([
@@ -86,6 +118,8 @@ options = vision.FaceLandmarkerOptions(base_options=base_options,
                                        num_faces=1)
 detector = vision.FaceLandmarker.create_from_options(options)
 
+
+
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -96,7 +130,7 @@ while cap.isOpened():
     # Convert the OpenCV frame to an mp.Image object.
     success, jpeg_data = cv2.imencode('.jpg', frame)
     if not success:
-        print("Failed to encode frame as JPEG")
+        # print("Failed to encode frame as JPEG")
         break
 
     # Convert JPEG data to bytes
@@ -110,7 +144,34 @@ while cap.isOpened():
 
     # STEP 4: Detect face landmarks from the input image.
     detection_result = detector.detect(image)
+    import re
+    # print((detection_result.face_landmarks))
+    # landMarksList=  str(detection_result.face_landmarks)
+    # Extract each NormalizedLandmark instance using regular expression
+    input_string = str(detection_result.face_landmarks)
+    landmark_strings = re.findall(r'NormalizedLandmark\(.*?\)', input_string)
 
+    # Define a class for NormalizedLandmark
+    class NormalizedLandmark:
+        def __init__(self, x, y, z, visibility, presence):
+            self.x = float(x)
+            self.y = float(y)
+            self.z = float(z)
+            self.visibility = float(visibility)
+            self.presence = float(presence)
+
+    # Convert the extracted strings to NormalizedLandmark objects
+    landmarks = []
+    for landmark_str in landmark_strings:
+        match = re.match(r'NormalizedLandmark\(x=(.*?), y=(.*?), z=(.*?), visibility=(.*?), presence=(.*?)\)', landmark_str)
+        if match:
+            x, y, z, visibility, presence = match.groups()
+            landmark = NormalizedLandmark(x, y, z, visibility, presence)
+            landmarks.append(landmark)
+
+    # Now 'landmarks' is a list of NormalizedLandmark objects
+    print(landmarks[29].x)
+    
     # Display the frame with recognized gesture.
     # cv2.imshow('Face landmark', frame)
     
@@ -118,14 +179,28 @@ while cap.isOpened():
     # create a mask
     img = cv2.imread('output.jpg')
     mask = np.zeros(img.shape[:2], np.uint8)
-    mask[100:250, 150:450] = 255
+    mask_x_coord= mousePos.get_x()
+    mask_y_coord= mousePos.get_y()
+    # Define the size of the mask
+    mask_x_size = 200
+    mask_y_size = 300
+
+    mask_x_half_size = int(mask_x_size/2)
+    mask_y_half_size = int(mask_y_size/2)
+
+    # Define the size of the mask
+
+    # Apply the mask at the specified coordinates
+    mask[mask_y_coord-mask_y_half_size:mask_y_coord+mask_y_half_size, mask_x_coord-mask_x_half_size:mask_x_coord+mask_x_half_size] = 255
+
     # compute the bitwise AND using the mask
 
     # STEP 5: Process the detection result. In this case, visualize it.
     annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
+    # print(detection_result)
     bgr_image = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
     masked_img = cv2.bitwise_and(bgr_image,bgr_image,mask = mask)
-    cv2.imshow("Annotade Image", masked_img)
+    cv2.imshow("Annotated Image", masked_img)
     # plot_face_blendshapes_bar_graph(detection_result.face_blendshapes[0])
     # print(detection_result.face_blendshapes[0])
     blendshapes_data = detection_result.face_blendshapes[0]
@@ -144,25 +219,18 @@ while cap.isOpened():
     if eye_blink_left is not None:
         eye_blink_left_name = eye_blink_left.category_name
         eye_blink_left_score = eye_blink_left.score
-        print(f"{eye_blink_left_name}: {eye_blink_left_score}")
-    else:
-        print("eyeBlinkLeft not found in blendshapes data")
+        # print(f"{eye_blink_left_name}: {eye_blink_left_score}")
+    # else:
+        # print("eyeBlinkLeft not found in blendshapes data")
 
     if mouth_close is not None:
         mouth_close_name = mouth_close.category_name
         mouth_close_score = mouth_close.score
-        print(f"{mouth_close_name}: {mouth_close_score}")
-    else:
-        print("mouthClose not found in blendshapes data")
-    
+        # print(f"{mouth_close_name}: {mouth_close_score}")
     # else:
-    #     print("eyeBlinkLeft not found in blendshapes data")
-    # print(detection_result.facial_transformation_matrixes)
+        # print("mouthClose not found in blendshapes data")
+    
 
-    # if(eye_blink_left_score >= 0.58):
-    #     mouse.click('left')
-    # if(mouth_close_score >= 0.0005):
-        # mouse.click('right')
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
