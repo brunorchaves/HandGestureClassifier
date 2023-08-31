@@ -109,6 +109,8 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 cap = cv2.VideoCapture(0)
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # STEP 2: Create an FaceLandmarker object.
 base_options = python.BaseOptions(model_asset_path='face_landmarker.task')
@@ -170,8 +172,13 @@ while cap.isOpened():
             landmarks.append(landmark)
 
     # Now 'landmarks' is a list of NormalizedLandmark objects
-    print(landmarks[29].x)
-    
+    # print(landmarks[29].x)
+    # print(landmarks[29].y)
+    nose_landMarkCoord_denormalized_x = frame_width*(landmarks[29].x)
+    nose_landMarkCoord_denormalized_y = frame_width*(landmarks[29].y)
+    print(nose_landMarkCoord_denormalized_x)
+    print(nose_landMarkCoord_denormalized_y)
+
     # Display the frame with recognized gesture.
     # cv2.imshow('Face landmark', frame)
     
@@ -179,8 +186,10 @@ while cap.isOpened():
     # create a mask
     img = cv2.imread('output.jpg')
     mask = np.zeros(img.shape[:2], np.uint8)
-    mask_x_coord= mousePos.get_x()
-    mask_y_coord= mousePos.get_y()
+    # mask_x_coord= mousePos.get_x()
+    # mask_y_coord= mousePos.get_y()
+    mask_x_coord= int(nose_landMarkCoord_denormalized_x)
+    mask_y_coord= int(nose_landMarkCoord_denormalized_y)
     # Define the size of the mask
     mask_x_size = 200
     mask_y_size = 300
@@ -191,7 +200,7 @@ while cap.isOpened():
     # Define the size of the mask
 
     # Apply the mask at the specified coordinates
-    mask[mask_y_coord-mask_y_half_size:mask_y_coord+mask_y_half_size, mask_x_coord-mask_x_half_size:mask_x_coord+mask_x_half_size] = 255
+    mask[mask_y_coord-mask_y_half_size:mask_y_coord+mask_y_half_size, mask_x_coord-mask_x_half_size:mask_x_coord+mask_x_half_size+50] = 255
 
     # compute the bitwise AND using the mask
 
